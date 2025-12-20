@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Practice Tracker - 10,000 Hours",
+  "version": "1.0.0",
+  "description": "Track your focused practice time across skills. Inspired by 10,000 Hours Rule, 20 Hours Rule, and Deep Practice methodology.",
+  "permissions": ["storage", "alarms", "notifications"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

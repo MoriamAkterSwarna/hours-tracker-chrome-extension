@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Icons</title>
+</head>
+<body>
+  <h1>Icon Generator</h1>
+  <p>Click the button below to generate and download icons.</p>
+  <button onclick="generateIcons()">Generate All Icons</button>
+  <div id="status"></div>
+
+  <script>
+    function generateIcons() {
+      const sizes = [16, 48, 128];
+      const status = document.getElementById('status');
+      status.innerHTML = 'Generating icons...<br>';
+
+      sizes.forEach((size, index) => {
+        setTimeout(() => {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+
+          // Blue gradient background
+          const gradient = ctx.createLinearGradient(0, 0, size, size);
+          gradient.addColorStop(0, '#4a9eff');
+          gradient.addColorStop(1, '#357abd');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, size, size);
+
+          // Draw a simple clock icon
+          const centerX = size / 2;
+          const centerY = size / 2;
+          const radius = size * 0.35;
+
+          // Clock circle
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = Math.max(1, size * 0.08);
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Clock hands
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = Math.max(1, size * 0.05);
+          ctx.lineCap = 'round';
+
+          // Hour hand (pointing to 3)
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(centerX + radius * 0.5, centerY);
+          ctx.stroke();
+
+          // Minute hand (pointing to 12)
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(centerX, centerY - radius * 0.6);
+          ctx.stroke();
+
+          // Center dot
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, Math.max(1, size * 0.05), 0, Math.PI * 2);
+          ctx.fill();
+
+          // Download
+          canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `icon${size}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            status.innerHTML += `Downloaded icon${size}.png<br>`;
+          }, 'image/png');
+        }, index * 500);
+      });
+
+      setTimeout(() => {
+        status.innerHTML += '<br><strong>All icons generated! Save them in the icons/ folder.</strong>';
+      }, sizes.length * 500 + 500);
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Practice Tracker</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      #loginPage {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        z-index: 10000;
+        overflow: auto;
+        padding: 20px;
+      }
+
+      #loginPage.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .login-container {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 360px;
+        margin: auto;
+      }
+
+      .login-header {
+        text-align: center;
+        margin-bottom: 25px;
+      }
+
+      .login-header h1 {
+        color: #333;
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
+
+      .login-header p {
+        color: #666;
+        font-size: 13px;
+      }
+
+      #loginPage .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #eee;
+        background: none;
+        box-shadow: none;
+        border-radius: 0;
+      }
+
+      #loginPage .tab-btn {
+        flex: 1;
+        padding: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+      }
+
+      #loginPage .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+
+      .form-content {
+        display: none;
+      }
+
+      .form-content.active {
+        display: block;
+      }
+
+      .btn-submit {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      .error-message {
+        color: #e74c3c;
+        font-size: 12px;
+        margin-top: 4px;
+        display: none;
+      }
+
+      .error-message.show {
+        display: block;
+      }
+
+      .success-message {
+        color: #27ae60;
+        font-size: 12px;
+        margin-top: 4px;
+        display: none;
+      }
+
+      .success-message.show {
+        display: block;
+      }
+
+      .demo-note {
+        background: #f0f7ff;
+        border: 1px solid #bfe9ff;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 15px;
+        font-size: 12px;
+        color: #0066cc;
+        display: none;
+      }
+
+      .demo-note.show {
+        display: block;
+      }
+
+      #mainApp {
+        display: block;
+      }
+
+      #mainApp.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Login Page -->
+    <div id="loginPage">
+      <div class="login-container">
+        <div class="login-header">
+          <h1>📊 Practice Tracker</h1>
+          <p>Track your focused practice time</p>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="login">Login</button>
+          <button class="tab-btn" data-tab="signup">Sign Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm" class="form-content active">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" placeholder="your@email.com" />
+            <div class="error-message" id="loginEmailError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input
+              type="password"
+              id="loginPassword"
+              placeholder="Enter your password"
+            />
+            <div class="error-message" id="loginPasswordError"></div>
+          </div>
+
+          <div class="demo-note" id="demoNote">
+            💡 Demo: Try email: <strong>demo@example.com</strong> | Password:
+            <strong>demo123</strong>
+          </div>
+
+          <button class="btn-submit" id="loginBtn">Login</button>
+          <div id="loginError" class="error-message"></div>
+        </div>
+
+        <!-- Signup Form -->
+        <div id="signupForm" class="form-content">
+          <div class="form-group">
+            <label for="signupName">Full Name</label>
+            <input type="text" id="signupName" placeholder="Your name" />
+            <div class="error-message" id="signupNameError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="signupEmail">Email</label>
+            <input type="email" id="signupEmail" placeholder="your@email.com" />
+            <div class="error-message" id="signupEmailError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="signupPassword">Password</label>
+            <input
+              type="password"
+              id="signupPassword"
+              placeholder="At least 6 characters"
+            />
+            <div class="error-message" id="signupPasswordError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="signupConfirmPassword">Confirm Password</label>
+            <input
+              type="password"
+              id="signupConfirmPassword"
+              placeholder="Confirm your password"
+            />
+            <div class="error-message" id="signupConfirmError"></div>
+          </div>
+
+          <button class="btn-submit" id="signupBtn">Create Account</button>
+          <div id="signupError" class="error-message"></div>
+          <div id="signupSuccess" class="success-message"></div>
+        </div>
+
+        <div class="info-text">
+          Your data is stored securely on your device only.
+        </div>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp">
+      <!-- Header -->
+      <header class="header">
+        <h1>Practice Tracker</h1>
+        <div class="header-right">
+          <button
+            id="darkModeToggle"
+            class="dark-mode-toggle"
+            title="Toggle dark mode"
+          >
+            🌙
+          </button>
+          <button
+            id="logoutBtn"
+            class="btn btn-link-small"
+            title="Logout"
+            style="margin-left: 8px; color: #e74c3c"
+          >
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Grid: Left (Timer & Stats) | Right (Tabs) -->
+      <div class="main-grid">
+        <div class="left-col">
+          <!-- Timer Section -->
+          <section class="timer-section">
+            <div class="timer-display" id="timerDisplay">00:00:00</div>
+            <div class="timer-controls">
+              <button id="startBtn" class="btn btn-primary">Start</button>
+              <button id="pauseBtn" class="btn btn-secondary" disabled>
+                Pause
+              </button>
+              <button id="resumeBtn" class="btn btn-secondary" disabled>
+                Resume
+              </button>
+              <button id="endBtn" class="btn btn-secondary" disabled>
+                End Block
+              </button>
+              <button id="endTaskBtn" class="btn btn-danger" disabled>
+                End Task
+              </button>
+            </div>
+            <div class="category-selector">
+              <label for="categorySelect">Category:</label>
+              <div style="display: flex; gap: 8px; align-items: center">
+                <select id="categorySelect" style="flex: 1">
+                  <option value="">Select a category</option>
+                </select>
+                <button
+                  id="quickAddCategoryBtn"
+                  class="btn btn-primary"
+                  style="flex: none; padding: 8px 12px"
+                  title="Add New Category"
+                >
+                  +
+                </button>
+                <button
+                  id="manageCategoriesBtn"
+                  class="btn btn-link"
+                  style="flex: none"
+                >
+                  Manage
+                </button>
+              </div>
+            </div>
+            <div class="category-selector" style="margin-top: 12px">
+              <label for="hoursTargetSelect">Target Hours:</label>
+              <input
+                type="number"
+                id="hoursTargetInput"
+                min="1"
+                step="1"
+                placeholder="Enter target hours"
+                list="hoursPresetList"
+              />
+              <datalist id="hoursPresetList">
+                <option value="20">20 Hours</option>
+                <option value="50">50 Hours</option>
+                <option value="100">100 Hours</option>
+                <option value="1000">1,000 Hours</option>
+                <option value="10000">10,000 Hours</option>
+              </datalist>
+            </div>
+            <div class="session-notes">
+              <label for="notesInput">Notes (optional):</label>
+              <textarea
+                id="notesInput"
+                placeholder="e.g., Solved 3 binary search problems"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- Stats Section -->
+          <section class="stats-section">
+            <div class="stat-card">
+              <div class="stat-label">Today's Practice</div>
+              <div class="stat-value" id="todayTotal">0h 0m</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Daily Goal</div>
+              <div class="stat-value" id="dailyGoal">60m</div>
+              <button id="setDailyGoalBtn" class="btn btn-link-small">
+                Set
+              </button>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Current Streak</div>
+              <div class="stat-value" id="currentStreak">0 days</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Best Streak</div>
+              <div class="stat-value" id="bestStreak">0 days</div>
+            </div>
+          </section>
+        </div>
+        <div class="right-col">
+          <!-- Tabs -->
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="progress">Progress</button>
+            <button class="tab-btn" data-tab="history">History</button>
+            <button class="tab-btn" data-tab="settings">Settings</button>
+          </div>
+
+          <!-- Progress Tab -->
+          <div class="tab-content active" id="progressTab">
+            <div id="progressList" class="progress-list"></div>
+          </div>
+
+          <!-- History Tab -->
+          <div class="tab-content" id="historyTab">
+            <div class="history-controls">
+              <select id="historyCategoryFilter">
+                <option value="all">All Categories</option>
+              </select>
+              <div class="export-buttons-group">
+                <button
+                  id="exportJsonBtn"
+                  class="btn btn-link"
+                  title="Export as JSON"
+                >
+                  📥 JSON
+                </button>
+                <button
+                  id="exportCsvBtn"
+                  class="btn btn-link"
+                  title="Export as CSV"
+                >
+                  📥 CSV
+                </button>
+              </div>
+            </div>
+            <div id="historyList" class="history-list"></div>
+          </div>
+
+          <!-- Settings Tab -->
+          <div class="tab-content" id="settingsTab">
+            <div class="settings-section">
+              <h3>Categories</h3>
+              <p style="font-size: 12px; color: #666; margin-bottom: 12px">
+                Manage your practice categories. You can add, edit, or delete
+                categories here.
+              </p>
+              <div id="categoriesList" class="categories-list"></div>
+              <button
+                id="addCategoryBtn"
+                class="btn btn-primary"
+                style="width: 100%; margin-top: 12px"
+              >
+                + Add New Category
+              </button>
+            </div>
+            <div class="settings-section">
+              <h3>Daily Goal</h3>
+              <div class="input-group">
+                <input
+                  type="number"
+                  id="dailyGoalInput"
+                  min="1"
+                  placeholder="Minutes"
+                />
+                <button id="saveDailyGoalBtn" class="btn btn-primary">
+                  Save
+                </button>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h3>Weekly Summary</h3>
+              <div class="stat-card">
+                <div class="stat-label">This Week</div>
+                <div class="stat-value" id="weeklyTotal">0h 0m</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle">Add Category</h2>
+        <input
+          type="text"
+          id="categoryNameInput"
+          placeholder="Category name"
+          maxlength="30"
+        />
+        <div class="modal-actions">
+          <button id="saveCategoryBtn" class="btn btn-primary">Save</button>
+          <button id="cancelCategoryBtn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button
+            id="deleteCategoryBtn"
+            class="btn btn-danger"
+            style="display: none"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manual Add Hours Modal -->
+    <div id="manualHoursModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add Practice Hours</h2>
+        <div class="manual-hours-form">
+          <div class="form-group">
+            <label for="manualCategory">Category:</label>
+            <select id="manualCategory">
+              <option value="">Select a category</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="manualHours">Hours:</label>
+            <input
+              type="number"
+              id="manualHours"
+              min="0"
+              max="24"
+              step="0.5"
+              placeholder="0"
+            />
+          </div>
+          <div class="form-group">
+            <label for="manualMinutes">Minutes:</label>
+            <input
+              type="number"
+              id="manualMinutes"
+              min="0"
+              max="59"
+              step="1"
+              placeholder="0"
+            />
+          </div>
+          <div class="form-group">
+            <label for="manualDate">Date:</label>
+            <input type="date" id="manualDate" />
+          </div>
+          <div class="form-group">
+            <label for="manualNotes">Notes (optional):</label>
+            <textarea
+              id="manualNotes"
+              placeholder="Add notes for this practice session"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="saveManualHoursBtn" class="btn btn-primary">
+            Add Hours
+          </button>
+          <button id="cancelManualHoursBtn" class="btn btn-secondary">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+    </div><!-- End of mainApp -->
+
+    <script src="login.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

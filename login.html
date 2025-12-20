@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Practice Tracker - Login</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .login-container {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 400px;
+      }
+
+      .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .login-header h1 {
+        color: #333;
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+
+      .login-header p {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #eee;
+      }
+
+      .tab-btn {
+        flex: 1;
+        padding: 12px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+      }
+
+      .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: #333;
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-content {
+        display: none;
+      }
+
+      .form-content.active {
+        display: block;
+      }
+
+      .btn-submit {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-top: 8px;
+      }
+
+      .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn-submit:active {
+        transform: translateY(0);
+      }
+
+      .error-message {
+        color: #e74c3c;
+        font-size: 13px;
+        margin-top: 4px;
+        display: none;
+      }
+
+      .error-message.show {
+        display: block;
+      }
+
+      .success-message {
+        color: #27ae60;
+        font-size: 13px;
+        margin-top: 4px;
+        display: none;
+      }
+
+      .success-message.show {
+        display: block;
+      }
+
+      .info-text {
+        text-align: center;
+        color: #666;
+        font-size: 12px;
+        margin-top: 20px;
+      }
+
+      .demo-note {
+        background: #f0f7ff;
+        border: 1px solid #bfe9ff;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 20px;
+        font-size: 12px;
+        color: #0066cc;
+        display: none;
+      }
+
+      .demo-note.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <div class="login-header">
+        <h1>📊 Practice Tracker</h1>
+        <p>Track your focused practice time</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="login">Login</button>
+        <button class="tab-btn" data-tab="signup">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="loginForm" class="form-content active">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="your@email.com" />
+          <div class="error-message" id="loginEmailError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input
+            type="password"
+            id="loginPassword"
+            placeholder="Enter your password"
+          />
+          <div class="error-message" id="loginPasswordError"></div>
+        </div>
+
+        <div class="demo-note" id="demoNote">
+          💡 Demo: Try email: <strong>demo@example.com</strong> | Password:
+          <strong>demo123</strong>
+        </div>
+
+        <button class="btn-submit" id="loginBtn">Login</button>
+        <div id="loginError" class="error-message"></div>
+      </div>
+
+      <!-- Signup Form -->
+      <div id="signupForm" class="form-content">
+        <div class="form-group">
+          <label for="signupName">Full Name</label>
+          <input type="text" id="signupName" placeholder="Your name" />
+          <div class="error-message" id="signupNameError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" placeholder="your@email.com" />
+          <div class="error-message" id="signupEmailError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input
+            type="password"
+            id="signupPassword"
+            placeholder="At least 6 characters"
+          />
+          <div class="error-message" id="signupPasswordError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="signupConfirmPassword">Confirm Password</label>
+          <input
+            type="password"
+            id="signupConfirmPassword"
+            placeholder="Confirm your password"
+          />
+          <div class="error-message" id="signupConfirmError"></div>
+        </div>
+
+        <button class="btn-submit" id="signupBtn">Create Account</button>
+        <div id="signupError" class="error-message"></div>
+        <div id="signupSuccess" class="success-message"></div>
+      </div>
+
+      <div class="info-text">
+        Your data is stored securely on your device only.
+      </div>
+    </div>
+
+    <script src="login.js"></script>
+  </body>
+</html>
