@@ -166,12 +166,23 @@ async function loadData() {
         allCategories,
         initialized: true,
       });
-      console.log("Default categories initialized for user:", userId);
+      console.log(
+        "Default categories initialized for user:",
+        userId,
+        "Total categories:",
+        defaultCategoriesWithUserId.length
+      );
       categories = defaultCategoriesWithUserId;
     } else {
       // Filter categories for current user
       const allCategories = result.allCategories || [];
       categories = allCategories.filter((cat) => cat.userId === userId);
+      console.log(
+        "[DEBUG] Loaded categories for user:",
+        userId,
+        "Count:",
+        categories.length
+      );
     }
 
     // Filter sessions for current user
@@ -323,12 +334,15 @@ function initializeUI() {
 
     // Category select change listener
     const categorySelect = document.getElementById("categorySelect");
-      if (categorySelect) {
-        categorySelect.addEventListener("change", (e) => {
-          console.log("[DEBUG] Category select changed", e.target.value);
-          handleCategoryChange(e);
-        });
-      }
+    if (categorySelect) {
+      categorySelect.addEventListener("change", (e) => {
+        console.log("[DEBUG] Category select changed to:", e.target.value);
+        console.log("[DEBUG] Categories available:", categories.length);
+        handleCategoryChange();
+      });
+    } else {
+      console.error("Category select element not found in initializeUI");
+    }
 
     // Target hours input
     const hoursTargetInput = document.getElementById("hoursTargetInput");
@@ -517,29 +531,7 @@ function handleCategoryChange() {
     // Sync the target hours display with the newly selected category
     syncTargetHoursWithSelectedCategory();
 
-    // Reset today's practice to 0 by removing today's sessions for this category
-    const todayStr = getLocalDateString();
-    const initialSessionCount = sessions.length;
-    sessions = sessions.filter(
-      (s) => !(s.categoryId === selectedId && s.date === todayStr)
-    );
-    const sessionsRemoved = initialSessionCount - sessions.length;
-
-    // Reset the daily target for this category
-    const cat = categories.find((c) => c.id === selectedId);
-    if (cat) {
-      cat.targetHours = undefined; // Reset to default
-    }
-
-    // If there were sessions removed, save and update displays
-    if (sessionsRemoved > 0) {
-      saveData();
-      try {
-        console.log("Category changed", e.target.value);
-      );
-    }
-
-    // Update all displays
+    // Update all displays to show stats for the selected category
     updateAllDisplays();
     updateTimerControls();
   } catch (error) {
@@ -788,6 +780,17 @@ function updateCategorySelect() {
     return;
   }
 
+  console.log(
+    "[DEBUG] updateCategorySelect - categories:",
+    categories,
+    "count:",
+    categories.length
+  );
+
+  // Save the currently selected values before clearing
+  const currentSelectedValue = select.value;
+  const currentFilterValue = filterSelect.value;
+
   // Clear existing options (except first)
   while (select.options && select.options.length > 1) {
     select.remove(1);
@@ -808,6 +811,26 @@ function updateCategorySelect() {
     filterSelect.appendChild(filterOption);
   });
 
+  // Restore the previously selected values if they still exist
+  if (
+    currentSelectedValue &&
+    categories.find((c) => c.id === currentSelectedValue)
+  ) {
+    select.value = currentSelectedValue;
+  }
+  if (
+    currentFilterValue &&
+    (currentFilterValue === "all" ||
+      categories.find((c) => c.id === currentFilterValue))
+  ) {
+    filterSelect.value = currentFilterValue;
+  }
+
+  console.log(
+    "[DEBUG] Dropdown populated with",
+    select.options.length - 1,
+    "categories"
+  );
   updateCategoriesList();
 }
 
@@ -1242,7 +1265,6 @@ function updateStats() {
 function updateProgressDisplay() {
   const list = document.getElementById("progressList");
   if (!list) return;
-  list.innerHTML = "";
 
   const todayStr = getLocalDateString();
   const activeCategoryIds = new Set(
@@ -1251,6 +1273,34 @@ function updateProgressDisplay() {
 
   // Include the category if a timer is currently running
   if (currentSession) activeCategoryIds.add(currentSession.categoryId);
+
+  // Check if we need to rebuild the entire list
+  const existingInProgressDiv = list.querySelector(".in-progress-block");
+  const shouldShowInProgress = !!currentSession;
+  const sessionIdChanged =
+    shouldShowInProgress &&
+    existingInProgressDiv &&
+    existingInProgressDiv.dataset.sessionId !==
+      String(currentSession?.id || "");
+
+  // Only clear if structure needs to change or if session appeared/disappeared
+  const needsRebuild =
+    (shouldShowInProgress && !existingInProgressDiv) ||
+    (!shouldShowInProgress && existingInProgressDiv) ||
+    sessionIdChanged ||
+    !list.hasChildNodes();
+
+  if (!needsRebuild && currentSession && existingInProgressDiv) {
+    // Just update the Resume button's disabled state
+    const resumeBtn = existingInProgressDiv.querySelector(".btn-secondary");
+    if (resumeBtn) {
+      resumeBtn.disabled = !currentSession.isPaused;
+    }
+    return; // Exit early, no need to rebuild
+  }
+
+  // Full rebuild needed
+  list.innerHTML = "";
 
   // 1. Render Category Progress Bars (Only for categories with activity today)
   const categoriesToDisplay = categories.filter((cat) =>
@@ -1342,34 +1392,52 @@ function updateProgressDisplay() {
     const cat = categories.find((c) => c.id === currentSession.categoryId);
     const inProgressDiv = document.createElement("div");
     inProgressDiv.className = "in-progress-block";
+    inProgressDiv.dataset.sessionId = currentSession.id || "";
     inProgressDiv.style.margin = "24px 0 0 0";
     inProgressDiv.style.padding = "14px";
     inProgressDiv.style.border = "2px solid #667eea";
     inProgressDiv.style.borderRadius = "8px";
     inProgressDiv.style.background = "#f7f8ff";
-    inProgressDiv.innerHTML = `
-      <div style="font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #333;">In Progress: ${escapeHtml(
-        cat?.name || "Unknown"
-      )}</div>
-      <div style="font-size: 13px; margin-bottom: 10px;">
-        Started: ${formatTime(new Date(currentSession.startTime))}
-      </div>
-      <div style="display: flex; gap: 10px;">
-        <button id="progressResumeBtn" class="btn btn-secondary" ${
-          !currentSession.isPaused ? "disabled" : ""
-        }>Resume</button>
-        <button id="progressEndBtn" class="btn btn-danger">End Block</button>
-      </div>
-    `;
-    list.appendChild(inProgressDiv);
 
-    // Add event listeners for Resume/End
-    setTimeout(() => {
-      const resumeBtn = document.getElementById("progressResumeBtn");
-      const endBtn = document.getElementById("progressEndBtn");
-      if (resumeBtn) resumeBtn.addEventListener("click", resumeTimer);
-      if (endBtn) endBtn.addEventListener("click", () => endTimer(false));
-    }, 0);
+    // Create header
+    const headerDiv = document.createElement("div");
+    headerDiv.style.cssText =
+      "font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #333;";
+    headerDiv.textContent = `In Progress: ${cat?.name || "Unknown"}`;
+
+    // Create time info
+    const timeDiv = document.createElement("div");
+    timeDiv.style.cssText = "font-size: 13px; margin-bottom: 10px;";
+    timeDiv.textContent = `Started: ${formatTime(
+      new Date(currentSession.startTime)
+    )}`;
+
+    // Create button container
+    const buttonContainer = document.createElement("div");
+    buttonContainer.style.cssText = "display: flex; gap: 10px;";
+
+    // Create Resume button
+    const resumeBtn = document.createElement("button");
+    resumeBtn.className = "btn btn-secondary";
+    resumeBtn.textContent = "Resume";
+    resumeBtn.disabled = !currentSession.isPaused;
+    resumeBtn.addEventListener("click", resumeTimer);
+
+    // Create End Block button
+    const endBlockBtn = document.createElement("button");
+    endBlockBtn.className = "btn btn-danger";
+    endBlockBtn.textContent = "End Block";
+    endBlockBtn.addEventListener("click", () => endTimer(false));
+
+    // Assemble the structure
+    buttonContainer.appendChild(resumeBtn);
+    buttonContainer.appendChild(endBlockBtn);
+
+    inProgressDiv.appendChild(headerDiv);
+    inProgressDiv.appendChild(timeDiv);
+    inProgressDiv.appendChild(buttonContainer);
+
+    list.appendChild(inProgressDiv);
   } else if (categoriesToDisplay.length === 0) {
     list.innerHTML =
       '<div class="empty-state"><div class="empty-state-text">No activity yet today. End a block or task to see progress!</div></div>';
