@@ -11,11 +11,62 @@ let categories = [];
 let sessions = [];
 let settings = {
   dailyGoal: 60, // minutes
-  darkMode: false,
+  darkMode: true, // Default to dark mode
   currentMode: "10000", // '10000' or '20'
 };
 
 // ==================== INITIALIZATION ====================
+
+function showMessage(message, type) {
+  // Remove existing messages
+  const existing = document.querySelector('.message');
+  if (existing) {
+    existing.remove();
+  }
+
+  // Create message element
+  const messageEl = document.createElement('div');
+  messageEl.className = `message ${type}`;
+  messageEl.textContent = message;
+
+  // Add styles
+  messageEl.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    max-width: 300px;
+  `;
+
+  if (type === 'error') {
+    messageEl.style.background = '#ef4444';
+  } else {
+    messageEl.style.background = '#10b981';
+  }
+
+  document.body.appendChild(messageEl);
+
+  // Animate in
+  setTimeout(() => {
+    messageEl.style.transform = 'translateX(0)';
+  }, 100);
+
+  // Remove after 3 seconds
+  setTimeout(() => {
+    messageEl.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (messageEl.parentNode) {
+        messageEl.remove();
+      }
+    }, 300);
+  }, 3000);
+}
 
 // Initialize immediately when script loads (DOM might already be ready)
 if (document.readyState === "loading") {
@@ -27,24 +78,14 @@ if (document.readyState === "loading") {
 async function init() {
   try {
     // Check if user is logged in
-    const isLoggedIn = await checkIfUserLoggedIn();
-    if (!isLoggedIn) {
-      // Show login page
-      const loginPage = document.getElementById("loginPage");
-      const mainApp = document.getElementById("mainApp");
-      if (loginPage) loginPage.classList.add("show");
-      if (mainApp) mainApp.classList.add("hidden");
-
-      // Initialize login system
-      console.log("User not logged in, showing login page");
+    const result = await chrome.storage.local.get("currentUser");
+    const currentUser = result.currentUser;
+    
+    if (!currentUser) {
+      // Redirect to login page
+      window.location.href = "login.html";
       return;
     }
-
-    // Hide login page, show main app
-    const loginPage = document.getElementById("loginPage");
-    const mainApp = document.getElementById("mainApp");
-    if (loginPage) loginPage.classList.remove("show");
-    if (mainApp) mainApp.classList.remove("hidden");
 
     await loadData();
   } catch (error) {
@@ -69,16 +110,6 @@ async function init() {
   }
 }
 
-// Check if user is logged in
-async function checkIfUserLoggedIn() {
-  try {
-    const result = await chrome.storage.local.get("currentUser");
-    return !!result.currentUser;
-  } catch (error) {
-    console.error("Error checking user login:", error);
-    return false;
-  }
-}
 
 // Default categories to initialize on first load
 const DEFAULT_CATEGORIES = [
@@ -189,7 +220,20 @@ async function loadData() {
     const allSessions = result.allSessions || [];
     sessions = allSessions.filter((s) => s.userId === userId);
 
-    settings = { ...settings, ...(result.settings || {}) };
+    // Set default settings if not found
+    if (!result.settings) {
+      settings = {
+        dailyGoal: 60,
+        darkMode: true, // Default to dark mode
+        currentMode: "10000",
+      };
+    } else {
+      settings = { ...settings, ...result.settings };
+      // Ensure dark mode is enabled by default for new users
+      if (settings.darkMode === undefined) {
+        settings.darkMode = true;
+      }
+    }
 
     // Load current session if it belongs to this user
     const session = result.currentSession || null;
@@ -200,7 +244,13 @@ async function loadData() {
       document.body.classList.add("dark-mode");
       const darkModeBtn = document.getElementById("darkModeToggle");
       if (darkModeBtn) {
-        darkModeBtn.textContent = "☀️";
+        darkModeBtn.textContent = "☀️"; // Show sun icon when in dark mode
+      }
+    } else {
+      document.body.classList.remove("dark-mode");
+      const darkModeBtn = document.getElementById("darkModeToggle");
+      if (darkModeBtn) {
+        darkModeBtn.textContent = "🌙"; // Show moon icon when in light mode
       }
     }
   } catch (error) {
@@ -211,7 +261,7 @@ async function loadData() {
     sessions = [];
     settings = {
       dailyGoal: 60,
-      darkMode: false,
+      darkMode: true, // Default to dark mode
       currentMode: "10000",
     };
     currentSession = null;
@@ -277,12 +327,6 @@ async function saveData() {
 // Initialize UI event listeners
 function initializeUI() {
   try {
-    // Logout button
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-      logoutBtn.addEventListener("click", handleLogout);
-    }
-
     // Timer controls
     const startBtn = document.getElementById("startBtn");
     const pauseBtn = document.getElementById("pauseBtn");
@@ -318,19 +362,16 @@ function initializeUI() {
       });
     }
 
-    // Tabs - Only within main app
-    const mainApp = document.getElementById("mainApp");
-    if (mainApp) {
-      mainApp.querySelectorAll(".tab-btn").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const tab =
-            e.target.dataset.tab || e.target.closest(".tab-btn")?.dataset.tab;
-          if (tab) {
-            switchTab(tab);
-          }
-        });
+    // Tabs
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const tab =
+          e.target.dataset.tab || e.target.closest(".tab-btn")?.dataset.tab;
+        if (tab) {
+          switchTab(tab);
+        }
       });
-    }
+    });
 
     // Category select change listener
     const categorySelect = document.getElementById("categorySelect");
@@ -398,6 +439,45 @@ function initializeUI() {
     const darkModeToggle = document.getElementById("darkModeToggle");
     if (darkModeToggle) {
       darkModeToggle.addEventListener("click", toggleDarkMode);
+    }
+
+    // Reload button
+    const reloadBtn = document.getElementById("reloadBtn");
+    if (reloadBtn) {
+      reloadBtn.addEventListener("click", async () => {
+        try {
+          // Reload all data
+          await loadData();
+          updateAllDisplays();
+          updateCategorySelect();
+          updateStats();
+          
+          // Show success message
+          showMessage('Data reloaded successfully!', 'success');
+        } catch (error) {
+          console.error('Error reloading data:', error);
+          showMessage('Error reloading data', 'error');
+        }
+      });
+    }
+
+    // Logout button
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        try {
+          if (confirm("Are you sure you want to logout?")) {
+            // Clear current user session
+            await chrome.storage.local.remove("currentUser");
+            
+            // Redirect to login page
+            window.location.href = "login.html";
+          }
+        } catch (error) {
+          console.error("Error during logout:", error);
+          showMessage('Error logging out', 'error');
+        }
+      });
     }
 
     // Export
@@ -1706,19 +1786,15 @@ function escapeHtml(text) {
 
 function switchTab(tabName) {
   try {
-    const mainApp = document.getElementById("mainApp");
-    if (!mainApp) return;
-
-    // Only select tabs within the main app
-    mainApp.querySelectorAll(".tab-btn").forEach((btn) => {
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.classList.remove("active");
     });
-    mainApp.querySelectorAll(".tab-content").forEach((content) => {
+    document.querySelectorAll(".tab-content").forEach((content) => {
       content.classList.remove("active");
     });
 
     // Find the specific button and content
-    const tabBtn = mainApp.querySelector(`[data-tab="${tabName}"]`);
+    const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
     const tabContent = document.getElementById(`${tabName}Tab`);
 
     if (tabBtn) {
@@ -1772,20 +1848,6 @@ function toggleDarkMode() {
   }
 }
 
-async function handleLogout() {
-  try {
-    if (confirm("Are you sure you want to logout?")) {
-      // Clear current user from storage
-      await chrome.storage.local.remove("currentUser");
-
-      // Redirect to login page
-      window.location.href = "login.html";
-    }
-  } catch (error) {
-    console.error("Error during logout:", error);
-    alert("Error logging out. Please try again.");
-  }
-}
 
 function saveDailyGoal() {
   try {

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Icons</title>
+</head>
+<body>
+    <canvas id="canvas16" width="16" height="16"></canvas>
+    <canvas id="canvas48" width="48" height="48"></canvas>
+    <canvas id="canvas128" width="128" height="128"></canvas>
+    
+    <script>
+        // Create gradient icon
+        function createIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            // Draw rounded rectangle
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.2);
+            ctx.fill();
+            
+            // Draw timer icon
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = size * 0.08;
+            ctx.lineCap = 'round';
+            
+            // Clock circle
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size * 0.35, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Clock hands
+            ctx.beginPath();
+            ctx.moveTo(size/2, size/2);
+            ctx.lineTo(size/2, size * 0.3);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(size/2, size/2);
+            ctx.lineTo(size * 0.65, size/2);
+            ctx.stroke();
+            
+            // Download as PNG
+            const link = document.createElement('a');
+            link.download = `icon${size}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // Generate all icons
+        setTimeout(() => {
+            createIcon(document.getElementById('canvas16'), 16);
+            setTimeout(() => createIcon(document.getElementById('canvas48'), 48), 100);
+            setTimeout(() => createIcon(document.getElementById('canvas128'), 128), 200);
+        }, 100);
+    </script>
+</body>
+</html>

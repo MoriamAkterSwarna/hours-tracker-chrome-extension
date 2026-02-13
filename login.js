@@ -1,424 +1,336 @@
-// Practice Tracker - Login Module
-// Handles user authentication and local credential storage
+// Login and Authentication functionality
+class AuthManager {
+    constructor() {
+        this.currentUser = null;
+        this.init();
+    }
 
-console.log("Login script loaded");
+    async init() {
+        this.setupEventListeners();
+        await this.checkExistingSession();
+    }
 
-// Check if Chrome API is available
-function isChromeAvailable() {
-  return (
-    typeof chrome !== "undefined" && chrome.storage && chrome.storage.local
-  );
+    setupEventListeners() {
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = e.target.dataset.tab;
+                this.switchTab(tab);
+            });
+        });
+
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
+
+        // Sign up form
+        const signupForm = document.getElementById('signupForm');
+        if (signupForm) {
+            signupForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSignup();
+            });
+        }
+
+        // Google Sign In
+        const googleBtn = document.getElementById('googleSignInBtn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', () => {
+                this.handleGoogleSignIn();
+            });
+        }
+    }
+
+    switchTab(tab) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+        // Update forms
+        document.querySelectorAll('.auth-form').forEach(form => {
+            form.classList.remove('active');
+        });
+        document.getElementById(`${tab}Form`).classList.add('active');
+    }
+
+    async handleLogin() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            // Show loading state
+            this.showLoading(true);
+
+            // Get existing users from storage
+            const result = await chrome.storage.local.get(['users']);
+            const users = result.users || [];
+
+            // Find user with matching email
+            const user = users.find(u => u.email === email);
+
+            if (!user) {
+                throw new Error('No account found with this email');
+            }
+
+            // Verify password (in a real app, this would be properly hashed)
+            if (user.password !== this.hashPassword(password)) {
+                throw new Error('Incorrect password');
+            }
+
+            // Login successful
+            await this.setActiveUser(user);
+            this.showSuccess('Login successful! Redirecting...');
+            
+            setTimeout(() => {
+                window.location.href = 'popup.html';
+            }, 1500);
+
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async handleSignup() {
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+        try {
+            // Validation
+            if (password !== confirmPassword) {
+                throw new Error('Passwords do not match');
+            }
+
+            if (password.length < 6) {
+                throw new Error('Password must be at least 6 characters');
+            }
+
+            // Show loading state
+            this.showLoading(true);
+
+            // Get existing users
+            const result = await chrome.storage.local.get(['users']);
+            const users = result.users || [];
+
+            // Check if email already exists
+            if (users.find(u => u.email === email)) {
+                throw new Error('An account with this email already exists');
+            }
+
+            // Create new user
+            const newUser = {
+                id: this.generateId(),
+                name: name,
+                email: email,
+                password: this.hashPassword(password),
+                createdAt: new Date().toISOString(),
+                authMethod: 'email'
+            };
+
+            // Save user
+            users.push(newUser);
+            await chrome.storage.local.set({ users });
+
+            // Auto-login after signup
+            await this.setActiveUser(newUser);
+            this.showSuccess('Account created! Redirecting...');
+
+            setTimeout(() => {
+                window.location.href = 'popup.html';
+            }, 1500);
+
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async handleGoogleSignIn() {
+        try {
+            this.showLoading(true);
+
+            // In a real implementation, you would use Google's OAuth API
+            // For this demo, we'll simulate Google login
+            const googleUser = await this.simulateGoogleAuth();
+
+            // Get existing users
+            const result = await chrome.storage.local.get(['users']);
+            const users = result.users || [];
+
+            // Check if Google user already exists
+            let user = users.find(u => u.email === googleUser.email);
+
+            if (!user) {
+                // Create new user from Google data
+                user = {
+                    id: this.generateId(),
+                    name: googleUser.name,
+                    email: googleUser.email,
+                    avatar: googleUser.avatar,
+                    createdAt: new Date().toISOString(),
+                    authMethod: 'google'
+                };
+                users.push(user);
+                await chrome.storage.local.set({ users });
+            }
+
+            // Login user
+            await this.setActiveUser(user);
+            this.showSuccess('Google login successful! Redirecting...');
+
+            setTimeout(() => {
+                window.location.href = 'popup.html';
+            }, 1500);
+
+        } catch (error) {
+            this.showError('Google login failed. Please try again.');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async simulateGoogleAuth() {
+        // Simulate Google OAuth response
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve({
+                    id: 'google_' + this.generateId(),
+                    name: 'Google User',
+                    email: 'user@gmail.com',
+                    avatar: 'https://lh3.googleusercontent.com/a/default-user'
+                });
+            }, 1000);
+        });
+    }
+
+    async setActiveUser(user) {
+        this.currentUser = user;
+        await chrome.storage.local.set({ currentUser: user });
+    }
+
+    async checkExistingSession() {
+        try {
+            const result = await chrome.storage.local.get(['currentUser']);
+            if (result.currentUser) {
+                // User already logged in, redirect to main app
+                window.location.href = 'popup.html';
+            }
+        } catch (error) {
+            console.error('Error checking session:', error);
+        }
+    }
+
+    // Utility functions
+    generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+
+    hashPassword(password) {
+        // Simple hash for demo (in production, use proper hashing)
+        return btoa(password + 'salt');
+    }
+
+    showLoading(show) {
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(btn => {
+            btn.disabled = show;
+            if (show) {
+                btn.textContent = 'Loading...';
+            } else {
+                // Reset button text based on type
+                if (btn.id === 'googleSignInBtn') {
+                    btn.innerHTML = `
+                        <svg width="18" height="18" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continue with Google
+                    `;
+                } else if (btn.form && btn.form.id === 'loginForm') {
+                    btn.textContent = 'Login';
+                } else if (btn.form && btn.form.id === 'signupForm') {
+                    btn.textContent = 'Sign Up';
+                }
+            }
+        });
+    }
+
+    showError(message) {
+        this.showMessage(message, 'error');
+    }
+
+    showSuccess(message) {
+        this.showMessage(message, 'success');
+    }
+
+    showMessage(message, type) {
+        // Remove existing messages
+        const existing = document.querySelector('.message');
+        if (existing) {
+            existing.remove();
+        }
+
+        // Create message element
+        const messageEl = document.createElement('div');
+        messageEl.className = `message ${type}`;
+        messageEl.textContent = message;
+
+        // Add styles
+        messageEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            max-width: 300px;
+        `;
+
+        if (type === 'error') {
+            messageEl.style.background = '#ef4444';
+        } else {
+            messageEl.style.background = '#10b981';
+        }
+
+        document.body.appendChild(messageEl);
+
+        // Animate in
+        setTimeout(() => {
+            messageEl.style.transform = 'translateX(0)';
+        }, 100);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            messageEl.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (messageEl.parentNode) {
+                    messageEl.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
 }
 
-// ==================== INITIALIZATION ====================
-
-// Initialize login page when DOM is ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initLogin);
-} else {
-  initLogin();
-}
-
-async function initLogin() {
-  try {
-    console.log("Login initialization started");
-
-    // Setup event listeners for login form (always do this for UI)
-    setupTabSwitching();
-    setupFormHandlers();
-    showDemoNote();
-
-    // Check Chrome API availability for data operations
-    if (!isChromeAvailable()) {
-      console.error(
-        "Chrome extension API not available - storage features will not work"
-      );
-      return;
-    }
-
-    // Ensure demo user exists
-    await ensureDemoUserExists();
-
-    console.log("Login initialization complete");
-  } catch (error) {
-    console.error("Error initializing login:", error);
-  }
-}
-
-// ==================== TAB SWITCHING ====================
-
-function setupTabSwitching() {
-  const loginContainer = document.querySelector(".login-container");
-  if (!loginContainer) return;
-
-  const tabButtons = loginContainer.querySelectorAll(".tab-btn");
-
-  tabButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tabName = btn.dataset.tab;
-
-      // Update active tab button
-      tabButtons.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      // Update active form content
-      loginContainer.querySelectorAll(".form-content").forEach((form) => {
-        form.classList.remove("active");
-      });
-
-      if (tabName === "login") {
-        document.getElementById("loginForm").classList.add("active");
-      } else if (tabName === "signup") {
-        document.getElementById("signupForm").classList.add("active");
-      }
-
-      // Clear error messages
-      clearAllErrors();
-    });
-  });
-}
-
-// ==================== FORM HANDLERS ====================
-
-function setupFormHandlers() {
-  const loginBtn = document.getElementById("loginBtn");
-  const signupBtn = document.getElementById("signupBtn");
-
-  loginBtn.addEventListener("click", handleLogin);
-  signupBtn.addEventListener("click", handleSignup);
-
-  // Allow Enter key to submit forms
-  document.getElementById("loginPassword").addEventListener("keypress", (e) => {
-    if (e.key === "Enter") handleLogin();
-  });
-
-  document
-    .getElementById("signupConfirmPassword")
-    .addEventListener("keypress", (e) => {
-      if (e.key === "Enter") handleSignup();
-    });
-}
-
-// ==================== LOGIN HANDLER ====================
-
-async function handleLogin() {
-  console.log("Login button clicked!");
-  try {
-    clearAllErrors();
-
-    if (!isChromeAvailable()) {
-      showError("loginError", "Extension APIs not available. Please reload.");
-      return;
-    }
-
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value;
-
-    console.log("Login attempt with email:", email);
-
-    // Validation
-    if (!email) {
-      showError("loginEmailError", "Email is required");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      showError("loginEmailError", "Please enter a valid email");
-      return;
-    }
-
-    if (!password) {
-      showError("loginPasswordError", "Password is required");
-      return;
-    }
-
-    // Get stored users
-    const result = await chrome.storage.local.get("users");
-    const users = result.users || [];
-
-    console.log("Users in storage:", users);
-
-    // Find user with matching email
-    const user = users.find((u) => u.email === email);
-
-    if (!user) {
-      console.log("User not found for email:", email);
-      showError("loginError", "Email or password is incorrect");
-      return;
-    }
-
-    console.log("User found:", user.email);
-    console.log("Password match:", user.password === password);
-
-    // Verify password (simple comparison - in production, use bcrypt)
-    if (user.password !== password) {
-      showError("loginError", "Email or password is incorrect");
-      return;
-    }
-
-    console.log("Login successful for user:", user.email);
-
-    // Login successful
-    await setCurrentUser(user);
-    showSuccess("loginError", "Login successful! Redirecting...");
-
-    // Redirect to popup after short delay
-    setTimeout(() => {
-      redirectToPopup();
-    }, 1000);
-  } catch (error) {
-    console.error("Login error:", error);
-    showError("loginError", "An error occurred. Please try again.");
-  }
-}
-
-// ==================== SIGNUP HANDLER ====================
-
-async function handleSignup() {
-  console.log("Signup button clicked!");
-  try {
-    clearAllErrors();
-
-    if (!isChromeAvailable()) {
-      showError("signupError", "Extension APIs not available. Please reload.");
-      return;
-    }
-
-    const name = document.getElementById("signupName").value.trim();
-    const email = document.getElementById("signupEmail").value.trim();
-    const password = document.getElementById("signupPassword").value;
-    const confirmPassword = document.getElementById(
-      "signupConfirmPassword"
-    ).value;
-
-    // Validation
-    if (!name) {
-      showError("signupNameError", "Full name is required");
-      return;
-    }
-
-    if (name.length < 2) {
-      showError("signupNameError", "Name must be at least 2 characters");
-      return;
-    }
-
-    if (!email) {
-      showError("signupEmailError", "Email is required");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      showError("signupEmailError", "Please enter a valid email");
-      return;
-    }
-
-    if (!password) {
-      showError("signupPasswordError", "Password is required");
-      return;
-    }
-
-    if (password.length < 6) {
-      showError(
-        "signupPasswordError",
-        "Password must be at least 6 characters"
-      );
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      showError("signupConfirmError", "Passwords do not match");
-      return;
-    }
-
-    // Get existing users
-    const result = await chrome.storage.local.get("users");
-    const users = result.users || [];
-
-    console.log("Existing users:", users);
-    console.log("Checking email:", email);
-
-    // Check if email already exists
-    if (users.some((u) => u.email === email)) {
-      console.log("Email already registered:", email);
-      showError("signupEmailError", "Email is already registered");
-      return;
-    }
-
-    // Create new user
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password, // In production, hash this with bcrypt
-      createdAt: Date.now(),
-    };
-
-    console.log("Creating new user:", newUser);
-
-    // Save user
-    users.push(newUser);
-    console.log("Users array before save:", users);
-
-    try {
-      await chrome.storage.local.set({ users });
-    } catch (storageError) {
-      console.error("Chrome storage error:", storageError);
-      console.error("Trying alternative save method...");
-      // If chrome.storage fails, it's a permission issue
-      throw new Error(
-        "Storage permission denied. Please check extension permissions."
-      );
-    }
-    document.getElementById("signupName").value = "";
-    document.getElementById("signupEmail").value = "";
-    document.getElementById("signupPassword").value = "";
-    document.getElementById("signupConfirmPassword").value = "";
-
-    // Show success message
-    const successMsg = document.getElementById("signupSuccess");
-    successMsg.textContent = "✓ Account created successfully! Please login.";
-    successMsg.classList.add("show");
-
-    // Switch to login tab after 2 seconds
-    setTimeout(() => {
-      document.querySelector('[data-tab="login"]').click();
-    }, 2000);
-  } catch (error) {
-    console.error("Signup error:", error);
-    console.error("Error stack:", error.stack);
-    console.error("Error message:", error.message);
-    showError("signupError", "Error: " + error.message);
-  }
-}
-
-// ==================== AUTHENTICATION HELPERS ====================
-
-async function ensureDemoUserExists() {
-  try {
-    if (!isChromeAvailable()) {
-      console.error("Chrome storage not available in ensureDemoUserExists");
-      return;
-    }
-
-    const result = await chrome.storage.local.get("users");
-    let users = result.users || [];
-
-    // Check if demo user already exists
-    const demoUserExists = users.some((u) => u.email === "demo@example.com");
-
-    if (!demoUserExists) {
-      const demoUser = {
-        id: "demo-user-001",
-        name: "Demo User",
-        email: "demo@example.com",
-        password: "demo123",
-        createdAt: Date.now(),
-      };
-
-      users.push(demoUser);
-      await chrome.storage.local.set({ users });
-      console.log("Demo user created");
-    }
-  } catch (error) {
-    console.error("Error ensuring demo user exists:", error);
-  }
-}
-
-async function checkIfLoggedIn() {
-  try {
-    const result = await chrome.storage.local.get("currentUser");
-    return !!result.currentUser;
-  } catch (error) {
-    console.error("Error checking login status:", error);
-    return false;
-  }
-}
-
-async function setCurrentUser(user) {
-  try {
-    const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      loginTime: Date.now(),
-    };
-    await chrome.storage.local.set({ currentUser: userData });
-    console.log("User set with ID:", userData.id);
-  } catch (error) {
-    console.error("Error setting current user:", error);
-  }
-}
-
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-// ==================== UI HELPERS ====================
-
-function showError(elementId, message) {
-  const element = document.getElementById(elementId);
-  if (element) {
-    element.textContent = message;
-    element.classList.add("show");
-  }
-}
-
-function showSuccess(elementId, message) {
-  const element = document.getElementById(elementId);
-  if (element) {
-    element.style.color = "#27ae60";
-    element.textContent = message;
-    element.classList.add("show");
-  }
-}
-
-function clearAllErrors() {
-  document.querySelectorAll(".error-message").forEach((el) => {
-    el.classList.remove("show");
-    el.textContent = "";
-  });
-
-  document.querySelectorAll(".success-message").forEach((el) => {
-    el.classList.remove("show");
-    el.textContent = "";
-  });
-}
-
-function showDemoNote() {
-  // Show demo note on login tab for first-time users
-  const demoNote = document.getElementById("demoNote");
-  if (demoNote) {
-    demoNote.classList.add("show");
-  }
-}
-
-// ==================== NAVIGATION ====================
-
-function redirectToPopup() {
-  // Hide login page and show main app
-  const loginPage = document.getElementById("loginPage");
-  const mainApp = document.getElementById("mainApp");
-
-  if (loginPage) {
-    loginPage.classList.remove("show");
-  }
-  if (mainApp) {
-    mainApp.classList.remove("hidden");
-  }
-
-  console.log("Redirected to main app");
-
-  // If we are on login.html as a separate page, redirect to popup.html
-  if (window.location.pathname.includes("login.html")) {
-    window.location.href = "popup.html";
-  } else {
-    // Otherwise just reload to re-run init in popup.js
-    window.location.reload();
-  }
-}
-
-// ==================== EXPORT FUNCTIONS ====================
-
-// Make checkIfLoggedIn available globally for popup.js
-window.checkIfLoggedIn = checkIfLoggedIn;
+// Initialize immediately when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  // Apply dark mode by default
+  document.body.classList.add('dark-mode');
+  new AuthManager();
+});
